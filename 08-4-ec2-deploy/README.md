@@ -96,6 +96,8 @@ ssh -i ./keys/my-key.pem ec2-user@<EC2 퍼블릭 IP>
 
 ```bash
 cd ~/ec2-deploy
+file setup-ec2.sh                 # "with CRLF line terminators" 가 보이면 이 경우
+sed -i 's/\r$//' setup-ec2.sh     # CRLF → LF 로 변환
 bash setup-ec2.sh
 exit                      # docker 그룹 적용을 위해 다시 접속
 ```
@@ -134,7 +136,7 @@ Successfully applied 3 migrations to schema `boot_db`, now at version v3
 | `http://<EC2 퍼블릭 IP>/` | React 메모 화면, 배지 `앱 UP` `DB UP` |
 | `http://<EC2 퍼블릭 IP>/api/memos` | V2가 넣은 첫 메모 (JSON) |
 | `http://<EC2 퍼블릭 IP>/actuator/health` | `"status":"UP"` |
-| `http://<EC2 퍼블릭 IP>:8080/memos` | **접속 안 됨** (정상, 외부에 공개하지 않음) |
+| `http://<EC2 퍼블릭 IP>:8080/api/memos` | **접속 안 됨** (정상, 외부에 공개하지 않음) |
 
 * * *
 
