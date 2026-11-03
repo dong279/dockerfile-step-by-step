@@ -1,0 +1,16 @@
+# ==========================================================
+# Namespace: 실습용 "방" 만들기
+# - 이 실습의 모든 리소스(Pod, Service ...)를 memo 라는 이름공간 안에 만듦
+# - 다른 프로젝트와 섞이지 않고, 실습이 끝나면 한 번에 지울 수 있음
+# kubectl apply -f 01-pod/00-namespace.yaml
+# kubectl get namespace
+# - memo 만 골라서 보기
+# kubectl get namespace memo
+# - memo namespace의 라벨, 자원 제한 등 자세한 정보 보기
+# kubectl describe namespace memo
+#     kubectl delete namespace memo   ← 안에 있는 것 전부 삭제
+# ==========================================================
+apiVersion: v1          # 이 리소스가 속한 API 버전 (Namespace 는 핵심 API 인 v1)
+kind: Namespace         # 리소스 종류
+metadata:
+  name: memo            # 이름 (다른 파일의 metadata.namespace: memo 와 같아야 함)

@@ -1,0 +1,39 @@
+# ==========================================================
+# [3단계] MariaDB Deployment (2단계와 같은 내용)
+# - 이번 단계에서는 11-mariadb-service.yaml 로 고정 주소(mariadb)를 붙임
+# ==========================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mariadb
+  namespace: memo
+  labels:
+    app: mariadb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mariadb
+  template:
+    metadata:
+      labels:
+        app: mariadb             # ← Service 가 이 이름표로 Pod 를 찾음
+    spec:
+      containers:
+        - name: mariadb
+          image: mariadb:10.11.18
+          ports:
+            - containerPort: 3306
+          env:
+            # ⚠ 실습용: 비밀번호를 그대로 적음 (5단계에서 Secret 으로 옮김)
+            - name: MARIADB_ROOT_PASSWORD
+              value: "root-pass-1234"
+            - name: MARIADB_DATABASE
+              value: "boot_db"
+            - name: MARIADB_USER
+              value: "boot"
+            - name: MARIADB_PASSWORD
+              value: "boot-pass-1234"
+          args:
+            - --character-set-server=utf8mb4
+            - --collation-server=utf8mb4_unicode_ci

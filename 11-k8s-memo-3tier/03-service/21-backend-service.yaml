@@ -1,0 +1,18 @@
+# ==========================================================
+# [3단계] 백엔드 Service (ClusterIP)
+# - 프론트엔드의 nginx 가 http://backend:8080 으로 요청을 전달
+# - replicas 를 2 이상으로 늘리면 Service 가 여러 Pod 에 요청을 나눠 줌 (로드 밸런싱)
+# - 외부에는 공개하지 않음 (브라우저는 프론트엔드의 /api 를 통해서만 접근)
+# ==========================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend                # ← 프론트엔드의 BACKEND_URL=http://backend:8080
+  namespace: memo
+spec:
+  type: ClusterIP
+  selector:
+    app: backend
+  ports:
+    - port: 8080
+      targetPort: 8080

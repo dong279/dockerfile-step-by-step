@@ -1,0 +1,22 @@
+# ==========================================================
+# [4단계, 변경 없음] ConfigMap 을 "파일"로 쓰기: MariaDB 초기화 SQL
+#
+# - compose 에서는 ./db/init 폴더를 /docker-entrypoint-initdb.d 에 마운트했음
+# - Kubernetes 에서는 SQL 파일 내용을 ConfigMap 에 넣고, 볼륨으로 마운트하면 같은 위치에 파일이 생김
+#     data 의 키(01-revoke-drop.sql) → 파일 이름
+#     data 의 값                     → 파일 내용
+# - MariaDB 는 데이터 폴더가 비어 있을 때(최초 초기화) 한 번만 이 SQL 을 실행
+#
+# 내용은 08-3 의 db/init/01-revoke-drop.sql 과 같음 (boot 계정의 DROP 권한 회수)
+# ==========================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mariadb-initdb
+  namespace: memo
+data:
+  # "|" 뒤의 여러 줄이 그대로 파일 내용이 됨
+  01-revoke-drop.sql: |
+    -- boot 계정에서 DROP 권한만 회수 (앱 계정이 실수로 테이블을 지우지 못하도록)
+    -- DB 이름의 _ 는 GRANT/REVOKE 에서 와일드카드이므로 MariaDB 이미지처럼 `boot\_db` 로 씀
+    REVOKE DROP ON `boot\_db`.* FROM 'boot'@'%';

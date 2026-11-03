@@ -1,0 +1,49 @@
+# ==========================================================
+# [4단계] 백엔드 Deployment: 설정 값은 ConfigMap 에서 가져오기
+#
+# 3단계와 달라진 점
+#   - DB_HOST, DB_PORT, MARIADB_DATABASE, MARIADB_USER 를 memo-config 에서 가져옴
+#   - 비밀번호는 아직 그대로 (5단계에서 Secret)
+# ==========================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: memo
+  labels:
+    app: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          # ⚠ hubusername 을 내 Docker Hub 아이디로 바꾸기
+          image: hubusername/boot-flyway-app:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef: { name: memo-config, key: DB_HOST }   # 한 줄로 쓴 형태 (위아래 같은 의미)
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef: { name: memo-config, key: DB_PORT }
+            - name: MARIADB_DATABASE
+              valueFrom:
+                configMapKeyRef: { name: memo-config, key: MARIADB_DATABASE }
+            - name: MARIADB_USER
+              valueFrom:
+                configMapKeyRef: { name: memo-config, key: MARIADB_USER }
+            # ⚠ 실습용: 비밀번호는 아직 그대로, MariaDB 쪽과 같은 값을 두 번 적어야 함 (5단계에서 해결)
+            - name: MARIADB_PASSWORD
+              value: "boot-pass-1234"
+            - name: JAVA_TOOL_OPTIONS
+              value: "-XX:MaxRAMPercentage=60"

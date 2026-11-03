@@ -1,0 +1,60 @@
+# ==========================================================
+# [4단계] MariaDB Deployment: 설정 값은 ConfigMap 에서 가져오기
+#
+# 3단계와 달라진 점
+#   - MARIADB_DATABASE, MARIADB_USER: value 대신 valueFrom.configMapKeyRef
+#   - 초기화 SQL: ConfigMap(mariadb-initdb)을 볼륨으로 마운트
+#   - 비밀번호는 아직 그대로 (5단계에서 Secret)
+# ==========================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mariadb
+  namespace: memo
+  labels:
+    app: mariadb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mariadb
+  template:
+    metadata:
+      labels:
+        app: mariadb
+    spec:
+      containers:
+        - name: mariadb
+          image: mariadb:10.11.18
+          ports:
+            - containerPort: 3306
+          env:
+            # ⚠ 실습용: 비밀번호는 아직 그대로 (5단계에서 Secret 으로)
+            - name: MARIADB_ROOT_PASSWORD
+              value: "root-pass-1234"
+            - name: MARIADB_PASSWORD
+              value: "boot-pass-1234"
+            # ConfigMap 에서 값 가져오기
+            - name: MARIADB_DATABASE         # 컨테이너 안의 환경 변수 이름
+              valueFrom:
+                configMapKeyRef:
+                  name: memo-config          # ConfigMap 이름
+                  key: MARIADB_DATABASE      # ConfigMap 안의 키
+            - name: MARIADB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: memo-config
+                  key: MARIADB_USER
+          args:
+            - --character-set-server=utf8mb4
+            - --collation-server=utf8mb4_unicode_ci
+          # 아래 volumes 의 initdb 를 컨테이너 안 폴더에 연결
+          volumeMounts:
+            - name: initdb
+              mountPath: /docker-entrypoint-initdb.d   # MariaDB 이미지가 초기화 SQL 을 찾는 폴더
+              readOnly: true                           # = compose 의 :ro
+      # Pod 에서 쓸 볼륨 목록
+      volumes:
+        - name: initdb
+          configMap:
+            name: mariadb-initdb                       # 02-mariadb-initdb.yaml

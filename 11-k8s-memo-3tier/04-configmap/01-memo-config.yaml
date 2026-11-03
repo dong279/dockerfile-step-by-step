@@ -1,0 +1,29 @@
+# ==========================================================
+# [4단계] ConfigMap: 비밀이 아닌 설정 값을 한곳에 모아 두기
+#
+# 3단계의 문제
+#   - DB 이름, 계정, 주소가 mariadb / backend Deployment 에 따로 적혀 있음
+#   - 값을 바꾸려면 여러 파일을 함께 고쳐야 하고, 하나만 고치면 서로 달라짐
+#
+# ConfigMap 으로 모으면
+#   - 값은 여기서만 관리하고, Deployment 는 "memo-config 의 MARIADB_USER 를 써라" 처럼 참조만 함
+#   - 같은 이미지에 환경(개발, 운영)별로 다른 ConfigMap 을 붙여 실행 가능 (compose 의 .env 와 비슷한 역할)
+#
+# ⚠ 비밀번호는 넣지 않음 → 5단계 Secret
+# ⚠ ConfigMap 을 바꿔도 실행 중인 Pod 의 환경 변수는 바뀌지 않음
+#   → kubectl rollout restart deployment/backend -n memo 로 Pod 를 다시 만들어야 적용
+# ==========================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: memo-config
+  namespace: memo
+data:                              # 키: 값 (값은 모두 문자열)
+  # DB 정보 (mariadb, backend 가 함께 사용)
+  MARIADB_DATABASE: "boot_db"
+  MARIADB_USER: "boot"
+  # 백엔드가 접속할 DB 주소 (mariadb Service 이름)
+  DB_HOST: "mariadb"
+  DB_PORT: "3306"
+  # 프론트엔드 nginx 가 요청을 전달할 백엔드 주소 (backend Service 이름)
+  BACKEND_URL: "http://backend:8080"

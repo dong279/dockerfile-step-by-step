@@ -1,0 +1,42 @@
+# ==========================================================
+# [7단계] 프론트엔드 Deployment: 완성본 (4단계 + probe + resources)
+# - replicas: 2 → 하나가 재시작돼도 화면 접속 유지
+# ==========================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: memo
+  labels:
+    app: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          # ⚠ hubusername 을 내 Docker Hub 아이디로 바꾸기
+          image: hubusername/boot-flyway-web:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          env:
+            - name: BACKEND_URL
+              valueFrom:
+                configMapKeyRef: { name: memo-config, key: BACKEND_URL }
+          resources:
+            requests: { cpu: 50m, memory: 32Mi }
+            limits:   { memory: 128Mi }
+          # nginx 가 index.html 을 응답하면 정상
+          readinessProbe:
+            httpGet: { path: /, port: 80 }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /, port: 80 }
+            periodSeconds: 20

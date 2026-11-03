@@ -1,0 +1,59 @@
+# ==========================================================
+# [5단계] MariaDB Deployment: 비밀번호는 Secret 에서 가져오기
+#
+# 4단계와 달라진 점
+#   - MARIADB_ROOT_PASSWORD, MARIADB_PASSWORD: value 대신 valueFrom.secretKeyRef
+#   - 이제 이 파일에는 비밀번호가 없음
+# ==========================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mariadb
+  namespace: memo
+  labels:
+    app: mariadb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mariadb
+  template:
+    metadata:
+      labels:
+        app: mariadb
+    spec:
+      containers:
+        - name: mariadb
+          image: mariadb:10.11.18
+          ports:
+            - containerPort: 3306
+          env:
+            # Secret 에서 가져오기 (configMapKeyRef 와 모양이 같고 이름만 secretKeyRef)
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: memo-secret          # Secret 이름 (03-memo-secret.yaml)
+                  key: MARIADB_ROOT_PASSWORD # Secret 안의 키
+            - name: MARIADB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: memo-secret
+                  key: MARIADB_PASSWORD
+            # ConfigMap 에서 가져오기 (4단계와 같음)
+            - name: MARIADB_DATABASE
+              valueFrom:
+                configMapKeyRef: { name: memo-config, key: MARIADB_DATABASE }
+            - name: MARIADB_USER
+              valueFrom:
+                configMapKeyRef: { name: memo-config, key: MARIADB_USER }
+          args:
+            - --character-set-server=utf8mb4
+            - --collation-server=utf8mb4_unicode_ci
+          volumeMounts:
+            - name: initdb
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+      volumes:
+        - name: initdb
+          configMap:
+            name: mariadb-initdb

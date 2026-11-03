@@ -1,0 +1,93 @@
+# ==========================================================
+# [7단계] MariaDB Deployment: 완성본 (6단계 + probe + resources)
+#
+# 6단계와 달라진 점
+#   - startupProbe / readinessProbe / livenessProbe: Kubernetes 가 DB 상태를 직접 확인
+#     (compose 의 healthcheck: 와 같은 명령 사용)
+#   - resources: CPU, 메모리 사용량의 기준(requests)과 한도(limits)
+#
+# probe 3종류
+#   startupProbe   : "시작이 끝났나?"  → 성공할 때까지 나머지 probe 를 기다리게 함 (처음 초기화가 오래 걸려도 재시작되지 않게)
+#   readinessProbe : "요청을 받을 준비가 됐나?" → 실패하면 Service 가 이 Pod 로 요청을 보내지 않음 (재시작은 안 함)
+#   livenessProbe  : "살아 있나?"      → 계속 실패하면 컨테이너를 재시작
+# ==========================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mariadb
+  namespace: memo
+  labels:
+    app: mariadb
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate               # PVC(ReadWriteOnce)를 쓰므로 옛 Pod 를 먼저 지우고 새로 시작
+  selector:
+    matchLabels:
+      app: mariadb
+  template:
+    metadata:
+      labels:
+        app: mariadb
+    spec:
+      containers:
+        - name: mariadb
+          image: mariadb:10.11.18
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: memo-secret, key: MARIADB_ROOT_PASSWORD }
+            - name: MARIADB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: memo-secret, key: MARIADB_PASSWORD }
+            - name: MARIADB_DATABASE
+              valueFrom:
+                configMapKeyRef: { name: memo-config, key: MARIADB_DATABASE }
+            - name: MARIADB_USER
+              valueFrom:
+                configMapKeyRef: { name: memo-config, key: MARIADB_USER }
+          args:
+            - --character-set-server=utf8mb4
+            - --collation-server=utf8mb4_unicode_ci
+
+          # [7단계] 자원 사용량
+          #   requests: 이만큼은 보장해 달라 (스케줄러가 노드를 고를 때 기준)
+          #   limits  : 이보다 더 쓰면 제한 (메모리를 넘으면 OOMKilled 로 재시작)
+          #   cpu 100m = 0.1 코어
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits:   { memory: 512Mi }
+
+          # [7단계] 상태 확인 (MariaDB 이미지에 들어 있는 healthcheck.sh 사용, compose 와 같은 명령)
+          startupProbe:
+            exec:
+              command: ["healthcheck.sh", "--connect", "--innodb_initialized"]
+            periodSeconds: 5
+            failureThreshold: 30     # 5초 × 30번 = 최대 150초까지 첫 초기화를 기다림
+          readinessProbe:
+            exec:
+              command: ["healthcheck.sh", "--connect", "--innodb_initialized"]
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["healthcheck.sh", "--connect", "--innodb_initialized"]
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3      # 3번 연속(약 1분) 실패하면 재시작
+
+          volumeMounts:
+            - name: initdb
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+            - name: data
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: initdb
+          configMap:
+            name: mariadb-initdb
+        - name: data
+          persistentVolumeClaim:
+            claimName: mariadb-data

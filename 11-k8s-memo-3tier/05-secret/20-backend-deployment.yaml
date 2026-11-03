@@ -1,0 +1,50 @@
+# ==========================================================
+# [5단계] 백엔드 Deployment: 비밀번호는 Secret 에서 가져오기
+#
+# 4단계와 달라진 점
+#   - MARIADB_PASSWORD 를 memo-secret 에서 가져옴 (MariaDB 와 같은 Secret → 값이 어긋날 일 없음)
+#   - MARIADB_ROOT_PASSWORD 는 전달하지 않음 (앱에는 root 비밀번호가 필요 없음, compose 와 같은 원칙)
+# ==========================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: memo
+  labels:
+    app: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          # ⚠ hubusername 을 내 Docker Hub 아이디로 바꾸기
+          image: hubusername/boot-flyway-app:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef: { name: memo-config, key: DB_HOST }
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef: { name: memo-config, key: DB_PORT }
+            - name: MARIADB_DATABASE
+              valueFrom:
+                configMapKeyRef: { name: memo-config, key: MARIADB_DATABASE }
+            - name: MARIADB_USER
+              valueFrom:
+                configMapKeyRef: { name: memo-config, key: MARIADB_USER }
+            # Secret 에서 가져오기
+            - name: MARIADB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: memo-secret, key: MARIADB_PASSWORD }
+            - name: JAVA_TOOL_OPTIONS
+              value: "-XX:MaxRAMPercentage=60"

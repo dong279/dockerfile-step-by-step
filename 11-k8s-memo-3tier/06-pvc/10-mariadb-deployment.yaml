@@ -1,0 +1,70 @@
+# ==========================================================
+# [6단계] MariaDB Deployment: 데이터 폴더를 PVC 에 연결
+#
+# 5단계와 달라진 점
+#   - /var/lib/mysql (MariaDB 데이터 폴더)을 PVC(mariadb-data)에 마운트
+#   - strategy: Recreate
+#
+# 왜 Recreate 인가?
+#   - Deployment 의 기본 교체 방식(RollingUpdate)은 "새 Pod 를 먼저 띄우고 옛 Pod 를 지움"
+#   - 그러면 잠깐 동안 MariaDB 2개가 같은 데이터 폴더를 쓰려고 해서 충돌함 (ReadWriteOnce)
+#   - Recreate 는 "옛 Pod 를 먼저 지우고 새 Pod 를 띄움" → 잠깐 끊기지만 안전
+#
+# 참고: 실무에서 DB 는 보통 StatefulSet 을 사용 (Pod 마다 고정 이름 + 고정 디스크)
+#       이 실습은 개념을 단순하게 하려고 Deployment + PVC 로 구성
+# ==========================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mariadb
+  namespace: memo
+  labels:
+    app: mariadb
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: mariadb
+  template:
+    metadata:
+      labels:
+        app: mariadb
+    spec:
+      containers:
+        - name: mariadb
+          image: mariadb:10.11.18
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: memo-secret, key: MARIADB_ROOT_PASSWORD }
+            - name: MARIADB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: memo-secret, key: MARIADB_PASSWORD }
+            - name: MARIADB_DATABASE
+              valueFrom:
+                configMapKeyRef: { name: memo-config, key: MARIADB_DATABASE }
+            - name: MARIADB_USER
+              valueFrom:
+                configMapKeyRef: { name: memo-config, key: MARIADB_USER }
+          args:
+            - --character-set-server=utf8mb4
+            - --collation-server=utf8mb4_unicode_ci
+          volumeMounts:
+            - name: initdb
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+            # [6단계 추가] DB 데이터 폴더 → PVC
+            - name: data
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: initdb
+          configMap:
+            name: mariadb-initdb
+        # [6단계 추가] 04-mariadb-pvc.yaml 의 PVC 를 볼륨으로 사용
+        - name: data
+          persistentVolumeClaim:
+            claimName: mariadb-data

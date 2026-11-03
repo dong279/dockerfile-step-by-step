@@ -1,0 +1,33 @@
+# ==========================================================
+# [4단계] 프론트엔드 Deployment: BACKEND_URL 을 ConfigMap 에서 가져오기
+# ==========================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: memo
+  labels:
+    app: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          # ⚠ hubusername 을 내 Docker Hub 아이디로 바꾸기
+          image: hubusername/boot-flyway-web:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          env:
+            - name: BACKEND_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: memo-config
+                  key: BACKEND_URL

@@ -1,0 +1,37 @@
+# ==========================================================
+# [1단계] Pod: 컨테이너를 실행하는 가장 작은 단위
+#
+# docker run -d --name mariadb -e ... mariadb:10.11.18 과 같은 내용
+#
+# 이 단계에서 확인할 것 (Pod 의 한계)
+#   - Pod 를 지우면 다시 만들어지지 않음 (자동 복구 없음)  → 2단계 Deployment
+#   - Pod IP 는 다시 만들 때마다 바뀜                      → 3단계 Service
+#   - 비밀번호가 YAML 에 그대로 보임                        → 5단계 Secret
+#   - 컨테이너가 사라지면 DB 데이터도 사라짐                → 6단계 PVC
+# ==========================================================
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mariadb                # Pod 이름 (kubectl get pods 에 표시)
+  namespace: memo              # 00-namespace.yaml 에서 만든 이름공간
+  labels:                      # 이름표 (나중에 Service, Deployment 가 이 값으로 Pod 를 찾음)
+    app: mariadb
+spec:
+  containers:                  # Pod 안에서 실행할 컨테이너 목록 (보통 1개)
+    - name: mariadb            # 컨테이너 이름 (kubectl logs ... -c mariadb)
+      image: mariadb:10.11.18  # Docker Hub 의 공식 이미지 (compose.yaml 과 같은 버전)
+      ports:
+        - containerPort: 3306  # 컨테이너가 사용하는 포트 (Dockerfile 의 EXPOSE 처럼 "표시")
+      env:                     # 환경 변수 (= docker run -e)
+        # ⚠ 실습용: 비밀번호를 그대로 적음 (5단계에서 Secret 으로 옮김)
+        - name: MARIADB_ROOT_PASSWORD
+          value: "root-pass-1234"
+        - name: MARIADB_DATABASE
+          value: "boot_db"
+        - name: MARIADB_USER
+          value: "boot"
+        - name: MARIADB_PASSWORD
+          value: "boot-pass-1234"
+      args:                    # 이미지 이름 뒤에 붙이던 서버 옵션 (= compose 의 command:)
+        - --character-set-server=utf8mb4
+        - --collation-server=utf8mb4_unicode_ci

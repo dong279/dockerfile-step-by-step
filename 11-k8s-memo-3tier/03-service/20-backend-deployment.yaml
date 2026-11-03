@@ -1,0 +1,46 @@
+# ==========================================================
+# [3단계] Spring Boot 메모 API (Docker Hub 이미지)
+#
+# - DB 주소는 Service 이름 "mariadb" (11-mariadb-service.yaml)
+# - compose 의 depends_on 이 없으므로, DB 가 준비되기 전에 시작하면 접속에 실패하고 재시작함
+#   → 처음 1~2번 RESTARTS 가 올라가는 것은 정상 (Kubernetes 가 알아서 다시 시도)
+#   → 7단계에서 initContainer 와 probe 로 정리
+# ==========================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: memo
+  labels:
+    app: backend
+spec:
+  replicas: 1                  # 실습: 2로 늘려 Service 가 요청을 나눠 주는지 확인
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          # ⚠ hubusername 을 내 Docker Hub 아이디로 바꾸기 (README 의 "이미지 이름 바꾸기")
+          image: hubusername/boot-flyway-app:latest
+          imagePullPolicy: Always   # latest 태그: 시작할 때마다 Docker Hub 에서 최신 이미지 확인
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_HOST
+              value: "mariadb"     # ← Service 이름
+            - name: DB_PORT
+              value: "3306"        # 숫자도 문자열로 ("" 로 감싸기)
+            - name: MARIADB_DATABASE
+              value: "boot_db"
+            - name: MARIADB_USER
+              value: "boot"
+            # ⚠ 실습용: MariaDB 와 같은 비밀번호를 두 곳에 적어야 함 (5단계에서 Secret 하나로)
+            - name: MARIADB_PASSWORD
+              value: "boot-pass-1234"
+            - name: JAVA_TOOL_OPTIONS
+              value: "-XX:MaxRAMPercentage=60"
