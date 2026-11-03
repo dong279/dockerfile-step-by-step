@@ -1,4 +1,4 @@
-# uv로 의존성을 관리하는 PDF 질의응답(RAG) Gradio 앱 이미지
+# uv로 의존성을 관리하는 PDF 질의응답(RAG) Gradio 앱 이미지 (OpenAI gpt-6-luna + text-embedding-3-small)
 # 사전 준비: uv sync (uv.lock 파일 생성)
 # 빌드: docker build -t langchain-rag-app .
 # 실행: docker run -d -p 7860:7860 --env-file .env langchain-rag-app
@@ -34,7 +34,7 @@ COPY pyproject.toml uv.lock .python-version ./
 RUN uv sync --locked --no-dev
 
 # 앱 소스 복사
-COPY 04main_rag_faiss_gradio_upstage.py .
+COPY 04main_rag_faiss_gradio_openai.py .
 
 # 실행 환경 설정
 # - PATH: python 명령이 .venv 안의 것으로 실행되도록 등록
@@ -56,11 +56,11 @@ EXPOSE 7860
 # - Gradio에는 별도 /health 경로가 없으므로 첫 화면(/)이 열리는지 확인
 # - slim 이미지에는 wget, curl이 없으므로 Python 기본 모듈로 호출
 # - --start-period=30s: Gradio와 LangChain 패키지를 불러오는 시간 동안 실패 무시
-# - 화면만 확인하므로 헬스체크로 Upstage API 사용량은 발생하지 않음
+# - 화면만 확인하므로 헬스체크로 OpenAI API 사용량은 발생하지 않음
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:7860/', timeout=3)"
 
 # 앱 실행
 # - Gradio는 demo.launch()로 서버를 띄우므로 uvicorn이 아닌 python으로 실행
-# - UPSTAGE_API_KEY는 여기 없음, docker run의 --env-file로 전달
-CMD ["python", "04main_rag_faiss_gradio_upstage.py"]
+# - OPENAI_API_KEY는 여기 없음, docker run의 --env-file로 전달
+CMD ["python", "04main_rag_faiss_gradio_openai.py"]

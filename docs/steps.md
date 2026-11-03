@@ -203,13 +203,15 @@ LangChain으로 Groq 모델을 호출하는 FastAPI 서버입니다. 의존성�
 
 [📁 폴더](../10-langchain-rag-uv) · [📄 README](../10-langchain-rag-uv/README.md)
 
-PDF를 업로드하면 문서 내용을 근거로 답변하는 RAG Gradio 앱입니다 (FAISS + Upstage Solar).
+PDF를 업로드하면 문서 내용을 근거로 답변하는 RAG Gradio 앱입니다 (FAISS + OpenAI `gpt-6-luna`, 임베딩 `text-embedding-3-small`).
 
-- 파일: `Dockerfile`, `pyproject.toml`, `uv.lock`, `04main_rag_faiss_gradio_upstage.py`, `.env.example`, `.dockerignore`
+- 파일: `Dockerfile`, `pyproject.toml`, `uv.lock`, `04main_rag_faiss_gradio_openai.py`, `.env.example`, `.dockerignore`
 - 핵심:
   - 접속 주소와 포트가 코드에 고정된 앱을 **환경 변수로 바꿔** 로컬과 Docker 양쪽에서 동작하게 수정
   - `PYTHONUNBUFFERED=1`로 `print()` 로그를 `docker logs`에 바로 표시
-  - 버전 호환 문제: Python 3.14 제외, Gradio 6.9 미만 (gradio-pdf 호환)
+  - 모델 교체: Upstage Solar → OpenAI (`langchain-openai`, `OPENAI_API_KEY`), GPT-6 추론 모델은 `reasoning_effort="none"`일 때만 `temperature` 사용 가능
+  - 하이브리드 검색: 벡터(FAISS) + 키워드(BM25, 한국어 두 글자 단위)를 합쳐 법령처럼 용어가 중요한 문서에서도 정답 청크를 찾음
+  - 버전 호환 문제: Gradio 6.9 미만 (gradio-pdf 호환), Python 3.12 기준
 
 ---
 

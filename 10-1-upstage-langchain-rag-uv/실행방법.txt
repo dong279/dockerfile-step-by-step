@@ -1,0 +1,49 @@
+# 0. 사전 준비 (처음 한 번)
+# - .env.example을 .env로 복사하고 UPSTAGE_API_KEY 입력
+# - 10 폴더에서 uv sync 실행
+#   → pyproject.toml 기준으로 uv.lock 생성 + 로컬 가상 환경(.venv) 설치
+#   → uv.lock은 Docker 빌드에 사용, .venv는 로컬 실행용 (.dockerignore로 제외)
+# - pyproject.toml을 수정할 때마다 다시 실행 (uv.lock이 갱신되지 않으면 빌드 실패)
+uv sync
+
+# 1. 로컬에서 먼저 확인 (선택)
+# - uv run은 .venv를 자동으로 사용하므로 activate 불필요
+# - 로컬에서는 환경 변수가 없으므로 127.0.0.1:7860으로 실행됨 (이전 코드와 동일)
+# - 확인 후 Ctrl + C로 종료 (Docker와 같은 7860 포트를 쓰므로 반드시 종료 후 다음 단계 진행)
+# 가상환경 활성화
+.venv\Scripts\activate
+
+uv run python 04main_rag_faiss_gradio_upstage.py
+
+# (재실행 시 기존 컨테이너 정리)
+# - 같은 이름(my-rag)의 컨테이너가 있으면 run 단계에서 이름 충돌 오류 발생
+docker rm -f my-rag
+
+# 2. 이미지 빌드
+# - .env는 .dockerignore로 제외되므로 이미지에 키가 들어가지 않음
+# - 처음에는 gradio, faiss 등 설치로 몇 분 걸릴 수 있음
+docker build -t langchain-rag-app .
+
+# 3. 컨테이너 실행
+# - --env-file .env: .env 파일의 값을 환경 변수로 전달 (키는 여기서만 들어감)
+# - -p 7860:7860: 내 PC의 7860 포트를 컨테이너의 7860 포트(Gradio)에 연결
+docker run -d -p 7860:7860 --env-file .env --name my-rag langchain-rag-app
+
+# 4. 상태 확인
+# - Exited (1)이면 docker logs에서 "UPSTAGE_API_KEY가 설정되지 않았습니다" 확인
+# - STATUS가 (health: starting) → (healthy)로 바뀌는지 확인 (30초 정도 소요)
+docker ps
+docker logs my-rag
+
+# 5. 브라우저 테스트
+# - PDF 업로드 → 질문 입력 → 답변과 출처(파일명, 페이지) 확인
+# - 질문할 때마다 Upstage API 사용량이 발생 (새 PDF는 임베딩 비용도 추가)
+http://localhost:7860
+
+# 6. 처리 과정 로그 실시간 보기
+# - -f: 새 로그를 계속 출력 (Ctrl + C로 종료, 컨테이너는 계속 실행됨)
+# - "PDF 파일 로딩 중", "총 N개 청크로 분할됨", "벡터 저장소 생성 완료!" 등 확인
+docker logs -f my-rag
+
+# 7. 키가 전달되었는지 확인 (값은 출력하지 않음)
+docker exec my-rag python -c "import os; print('set' if os.getenv('UPSTAGE_API_KEY') else 'missing')"

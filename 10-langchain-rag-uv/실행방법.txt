@@ -1,9 +1,13 @@
 # 0. 사전 준비 (처음 한 번)
-# - .env.example을 .env로 복사하고 UPSTAGE_API_KEY 입력
+# - OpenAI API 키 발급: https://platform.openai.com/api-keys (결제 수단 등록 또는 크레딧 충전 필요)
+# - .env.example을 .env로 복사하고 OPENAI_API_KEY 입력
+#   (이전 Upstage 실습의 .env를 쓰고 있다면 UPSTAGE_API_KEY 줄을 OPENAI_API_KEY=sk-... 로 교체)
+# - 사용 모델: 채팅 gpt-6-luna, 임베딩 text-embedding-3-small
 # - 10 폴더에서 uv sync 실행
 #   → pyproject.toml 기준으로 uv.lock 생성 + 로컬 가상 환경(.venv) 설치
 #   → uv.lock은 Docker 빌드에 사용, .venv는 로컬 실행용 (.dockerignore로 제외)
 # - pyproject.toml을 수정할 때마다 다시 실행 (uv.lock이 갱신되지 않으면 빌드 실패)
+# - langchain-upstage → langchain-openai로 바뀌었으므로, 이전에 만든 .venv가 있어도 uv sync가 알아서 맞춰 줌
 uv sync
 
 # 1. 로컬에서 먼저 확인 (선택)
@@ -13,7 +17,7 @@ uv sync
 # 가상환경 활성화
 .venv\Scripts\activate
 
-uv run python 04main_rag_faiss_gradio_upstage.py
+uv run python 04main_rag_faiss_gradio_openai.py
 
 # (재실행 시 기존 컨테이너 정리)
 # - 같은 이름(my-rag)의 컨테이너가 있으면 run 단계에서 이름 충돌 오류 발생
@@ -30,20 +34,22 @@ docker build -t langchain-rag-app .
 docker run -d -p 7860:7860 --env-file .env --name my-rag langchain-rag-app
 
 # 4. 상태 확인
-# - Exited (1)이면 docker logs에서 "UPSTAGE_API_KEY가 설정되지 않았습니다" 확인
+# - Exited (1)이면 docker logs에서 "OPENAI_API_KEY가 설정되지 않았습니다" 확인
 # - STATUS가 (health: starting) → (healthy)로 바뀌는지 확인 (30초 정도 소요)
 docker ps
 docker logs my-rag
 
 # 5. 브라우저 테스트
 # - PDF 업로드 → 질문 입력 → 답변과 출처(파일명, 페이지) 확인
-# - 질문할 때마다 Upstage API 사용량이 발생 (새 PDF는 임베딩 비용도 추가)
+# - 질문할 때마다 OpenAI API 사용량이 발생 (새 PDF는 임베딩 비용도 추가)
+# - 오류는 채팅창에 표시됨: 401(키 오류), 429(결제/한도), 404(모델 이름) → README 문제 해결 참고
 http://localhost:7860
 
 # 6. 처리 과정 로그 실시간 보기
 # - -f: 새 로그를 계속 출력 (Ctrl + C로 종료, 컨테이너는 계속 실행됨)
-# - "PDF 파일 로딩 중", "총 N개 청크로 분할됨", "벡터 저장소 생성 완료!" 등 확인
+# - "PDF 파일 로딩 중", "총 N개 청크로 분할됨", "벡터 저장소 생성 완료!", "하이브리드 검색기(키워드 + 벡터) 준비 완료" 등 확인
+# - 문서에 있는 내용인데 "찾을 수 없습니다"라고 하면 답변 아래 출처 쪽 번호에 정답 쪽이 있는지 먼저 확인 (없으면 검색 문제, README 참고)
 docker logs -f my-rag
 
 # 7. 키가 전달되었는지 확인 (값은 출력하지 않음)
-docker exec my-rag python -c "import os; print('set' if os.getenv('UPSTAGE_API_KEY') else 'missing')"
+docker exec my-rag python -c "import os; print('set' if os.getenv('OPENAI_API_KEY') else 'missing')"

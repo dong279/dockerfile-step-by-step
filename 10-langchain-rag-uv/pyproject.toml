@@ -1,15 +1,16 @@
-# 04main_rag_faiss_gradio_upstage.py 실행에 필요한 패키지만 정의
+# 04main_rag_faiss_gradio_openai.py 실행에 필요한 패키지만 정의
 # - 코드에서 직접 import하는 패키지 + LangChain 클래스가 내부에서 필요로 하는 패키지
 # - 강의 전체용 pyproject.toml과 달리 PyTorch가 설치되지 않아 이미지가 훨씬 작음
 
 [project]
 name = "langchain-rag-uv"
 version = "0.1.0"
-description = "PDF 질의응답(RAG): FAISS + Upstage Solar + Gradio 예제"
+description = "PDF 질의응답(RAG): FAISS + OpenAI(gpt-6-luna) + Gradio 예제"
 # 사용할 Python 버전 범위
-# - 3.14 제외: langchain-upstage가 tokenizers를 0.20.x로 제한하는데,
-#   tokenizers 0.20.x는 Python 3.13까지만 설치 파일(wheel)을 제공함
-#   → 3.14에서는 소스 빌드를 시도하다 실패하므로 상한을 둠
+# - 실습과 Docker 이미지(python:3.12-slim)에서 확인한 버전은 3.12
+# - 이전(Upstage)에는 langchain-upstage가 tokenizers 0.20.x(3.13까지만 지원)를 요구해 3.14를 막았음
+#   langchain-openai로 바꾸면서 그 제한은 없어졌지만, Gradio 6.8 + gradio-pdf 조합을 3.14에서
+#   확인하지 않았으므로 상한은 그대로 둠 (3.14에서 확인한 뒤 "<3.15"로 올려도 됨)
 requires-python = ">=3.12,<3.14"
 
 dependencies = [
@@ -25,7 +26,13 @@ dependencies = [
     "langchain-core>=1.2",              # ChatPromptTemplate, StrOutputParser, Runnable
     "langchain-community>=0.4.1",       # PyPDFLoader, FAISS 연동 클래스
     "langchain-text-splitters>=1.1.0",  # RecursiveCharacterTextSplitter
-    "langchain-upstage>=0.7.5",         # UpstageEmbeddings, ChatUpstage
+    # [변경 3] 이전: "langchain-upstage>=0.7.5" (UpstageEmbeddings, ChatUpstage)
+    # - 1.7 이상: gpt-6 계열에 temperature와 reasoning_effort를 함께 그대로 전달하는 버전에서 확인
+    # - openai(SDK), tiktoken(임베딩 전 토큰 수 계산)은 자동으로 함께 설치됨
+    "langchain-openai>=1.7",            # OpenAIEmbeddings, ChatOpenAI
+    # [변경 5] 하이브리드 검색 (키워드 + 벡터)
+    "langchain-classic>=1.0",           # EnsembleRetriever (두 검색 결과를 합침)
+    "rank-bm25>=0.2.2",                 # BM25Retriever 가 내부에서 사용하는 키워드 검색 엔진
 
     # LangChain 클래스가 내부에서 사용 (코드에 import는 없지만 필수)
     "pypdf>=4.2.0,<5.0.0",              # PyPDFLoader의 PDF 텍스트 추출

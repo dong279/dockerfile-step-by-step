@@ -1,0 +1,40 @@
+# 04main_rag_faiss_gradio_upstage.py 실행에 필요한 패키지만 정의
+# - 코드에서 직접 import하는 패키지 + LangChain 클래스가 내부에서 필요로 하는 패키지
+# - 강의 전체용 pyproject.toml과 달리 PyTorch가 설치되지 않아 이미지가 훨씬 작음
+
+[project]
+name = "langchain-rag-uv"
+version = "0.1.0"
+description = "PDF 질의응답(RAG): FAISS + Upstage Solar + Gradio 예제"
+# 사용할 Python 버전 범위
+# - 3.14 제외: langchain-upstage가 tokenizers를 0.20.x로 제한하는데,
+#   tokenizers 0.20.x는 Python 3.13까지만 설치 파일(wheel)을 제공함
+#   → 3.14에서는 소스 빌드를 시도하다 실패하므로 상한을 둠
+requires-python = ">=3.12,<3.14"
+
+dependencies = [
+    # 웹 UI
+    # Gradio 앱 (Blocks, Chatbot, Textbox 등)
+    # - 6.9 미만으로 제한: gradio-pdf(0.0.24)는 Gradio 본체의 Svelte 런타임 파일
+    #   (assets/svelte/*.js)을 불러와 화면을 그리는데, Gradio 6.9.0부터 이 파일이 빠져
+    #   PDF 업로드 창이 표시되지 않고 화면이 "로딩 중"에서 멈춤
+    "gradio>=6.3.0,<6.9",
+    "gradio-pdf>=0.0.24",               # PDF 업로드, 미리보기 컴포넌트
+
+    # LangChain
+    "langchain-core>=1.2",              # ChatPromptTemplate, StrOutputParser, Runnable
+    "langchain-community>=0.4.1",       # PyPDFLoader, FAISS 연동 클래스
+    "langchain-text-splitters>=1.1.0",  # RecursiveCharacterTextSplitter
+    "langchain-upstage>=0.7.5",         # UpstageEmbeddings, ChatUpstage
+
+    # LangChain 클래스가 내부에서 사용 (코드에 import는 없지만 필수)
+    "pypdf>=4.2.0,<5.0.0",              # PyPDFLoader의 PDF 텍스트 추출
+    "faiss-cpu>=1.13.2",                # FAISS 벡터 검색 엔진
+
+    # 환경 변수
+    "python-dotenv>=1.2.1",             # 로컬 실행 시 .env 파일 로드
+]
+
+[tool.uv]
+# 배포용 라이브러리가 아닌 실행용 앱 (의존성만 설치)
+package = false

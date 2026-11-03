@@ -1,0 +1,24 @@
+# 이미지 빌드 시 복사하지 않을 파일
+
+# 비밀 값: 이미지에 들어가면 이미지를 받은 누구나 키를 볼 수 있음
+.env
+
+# 가상 환경: 컨테이너 안에서 uv sync로 새로 만들므로 제외
+.venv
+__pycache__
+*.pyc
+
+# 테스트용 PDF: 실행 중 브라우저로 업로드하므로 이미지에 넣을 필요 없음
+*.pdf
+
+# Gradio가 로컬 실행 중 만드는 임시 폴더
+.gradio
+flagged
+
+# Docker, 문서, 버전 관리 파일
+Dockerfile
+.dockerignore
+실행방법.txt
+README.md
+.git
+.gitignore
