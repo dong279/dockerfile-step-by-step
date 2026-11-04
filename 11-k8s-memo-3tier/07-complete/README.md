@@ -152,6 +152,48 @@ kubectl get all,cm,secret,pvc -n memo
 | PVC | `mariadb-data` | 6 |
 | probe, resources, initContainer | 각 Deployment 안 | 7 |
 
+## Frontend Service(NodePort 타입) 실행하기
+* service 객체 확인하기
+```bash
+kubectl get svc
+NAME               TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE
+service/backend    ClusterIP   34.118.226.166   <none>        8080/TCP       7m13s
+service/frontend   NodePort    34.118.229.221   <none>        80:30080/TCP   7m12s
+service/mariadb    ClusterIP   34.118.230.235   <none>        3306/TCP       7m14s
+```
+* Node IP 확인하기
+```bash
+kubectl get nodes -o wide
+NAME                                                STATUS   ROLES    AGE   VERSION               INTERNAL-IP   EXTERNAL-IP     OS-IMAGE                             KERNEL-VERSION      CONTAINER-RUNTIME
+gke-boot-react-cluster-default-pool-5f18366f-2pkd   Ready    <none>   27m   v1.36.4-gke.2046003   10.128.0.8    136.80.238.42   Container-Optimized OS from Google   6.12.105+ (amd64)   containerd://2.2.7
+gke-boot-react-cluster-default-pool-5f18366f-9lf4   Ready    <none>   27m   v1.36.4-gke.2046003   10.128.0.7    136.80.41.69    Container-Optimized OS from Google   6.12.105+ (amd64)   containerd://2.2.7
+gke-boot-react-cluster-default-pool-5f18366f-b8js   Ready    <none>   27m   v1.36.4-gke.2046003   10.128.0.9    34.28.82.97     Container-Optimized OS from Google   6.12.105+ (amd64)   containerd://2.2.7
+```
+* 웹브라우저에서 프론트엔드 실행하기
+```bash
+http://Node IP: Node Port
+http://136.80.238.42:30080
+```
+
+## Frontend Service(LoadBalancer 타입) 실행하기
+* service 객체 확인하기
+```bash
+kubectl get svc
+NAME               TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE
+service/backend    ClusterIP      34.118.226.166   <none>        8080/TCP       25m
+service/frontend   LoadBalancer   34.118.229.221   <pending>     80:30080/TCP   25m
+service/mariadb    ClusterIP      34.118.230.235   <none>        3306/TCP       25m
+
+NAME               TYPE           CLUSTER-IP       EXTERNAL-IP      PORT(S)        AGE
+service/backend    ClusterIP      34.118.226.166   <none>           8080/TCP       29m
+service/frontend   LoadBalancer   34.118.229.221   34.170.232.217   80:30080/TCP   29m
+service/mariadb    ClusterIP      34.118.230.235   <none>           3306/TCP       29m
+```
+* 웹브라우저에서 프론트엔드 실행하기
+```bash
+http://서비스의 EXTERNAL-IP:80 (80은 생략가능)
+http://34.170.232.217
+```
 ## 정리
 
 ```bash

@@ -18,6 +18,7 @@ metadata:
   namespace: memo
 spec:
   type: NodePort
+  #type: LoadBalancer
   selector:
     app: frontend
   ports:
