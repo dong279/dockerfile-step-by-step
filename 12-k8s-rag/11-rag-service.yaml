@@ -1,0 +1,31 @@
+# ==========================================================
+# RAG 앱 Service (NodePort): 내 PC 브라우저에서 접속
+#   - minikube (docker 드라이버, Windows/Mac): minikube service rag -n rag --url  ← 터미널을 열어 둔 채 출력된 주소로 접속
+#   - minikube (Linux): http://<minikube ip>:30786
+#   - GKE: gke/11-rag-service-lb.yaml 로 LoadBalancer 로 바꿈 (README 의 "GKE")
+#   - 메모 앱(30080)과 다른 포트라 동시에 실행 가능
+#
+# sessionAffinity: ClientIP (세션 고정, sticky session)
+#   - 같은 접속 IP 의 요청을 항상 같은 Pod 로 보냄
+#   - 이 앱은 업로드한 PDF 와 벡터 저장소를 Pod 메모리에 두므로,
+#     Pod 가 2개 이상일 때 요청이 다른 Pod 로 가면 "PDF 가 없는" Pod 가 답하게 됨
+#   - replicas: 1 일 때는 효과가 없지만, 늘릴 때를 대비해 미리 설정
+#   - 메모 앱 backend 에는 필요 없었음 (데이터가 모두 MariaDB 에 있어서 어느 Pod 가 받아도 같음)
+# ==========================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: rag
+  namespace: rag
+spec:
+  type: NodePort
+  selector:
+    app: rag
+  ports:
+    - port: 80              # 클러스터 안에서 rag:80
+      targetPort: 7860      # Pod 안 Gradio
+      nodePort: 30786       # 내 PC 에서 접속하는 포트 (30000~32767)
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800 # 3시간 동안 같은 Pod 로 (기본값과 같음)

@@ -19,6 +19,8 @@
 | **배포: 백엔드** [08-3 README](./08-3-springboot-flyway-dockercompose/README.md) | 메모 API(`/api/memos`), Flyway, GitHub Actions(`maven.yml`) → `boot-flyway-app` 이미지 |
 | **배포: EC2 실행 파일** [08-4 README](./08-4-ec2-deploy/README.md) | EC2에서 web + app + mariadb를 함께 실행하는 `compose.yaml`, `setup-ec2.sh` |
 | **배포: RAG 앱** [10-ec2-deploy README](./10-ec2-deploy/README.md) | PDF 질의응답 Gradio 앱을 EC2에 배포 (로그인 필수, OpenAI 키는 `.env`로만) |
+| **Kubernetes: 메모 앱** [11 README](./11-k8s-memo-3tier/README.md) | Pod → Deployment → Service → ConfigMap → Secret → PVC 단계별 3티어 배포 (minikube, GKE) |
+| **Kubernetes: RAG 앱** [12 README](./12-k8s-rag/README.md) | RAG 앱을 minikube, GKE에 배포, `sessionAffinity`, GCP Secret Manager 연동 |
 
 배포 단계(07-2, 08-3)는 GitHub 저장소로도 분리되어 있습니다.
 
@@ -60,7 +62,9 @@ dockerfile-step-by-step/
 ├── 09-langchain-uv/
 ├── 10-langchain-rag-uv/                   ← PDF RAG Gradio 앱 (OpenAI, 하이브리드 검색, 로그인)
 │   └── .github/workflows/docker.yml       ← Docker Hub push (langchain-rag-app)
-└── ec2-deploy-langchain/                  ← [배포] RAG 앱 EC2 실행용 compose.yaml, setup-ec2.sh
+├── 10-ec2-deploy/                         ← [배포] RAG 앱 EC2 실행용 compose.yaml, setup-ec2.sh
+├── 11-k8s-memo-3tier/                     ← [Kubernetes] 메모 앱 3티어 (01-pod ~ 07-complete, gke/)
+└── 12-k8s-rag/                            ← [Kubernetes] RAG 앱 (secret/ 예시, gke/ LoadBalancer, gke/secret-sync/ 심화)
 ```
 
 모든 단계 폴더에는 `Dockerfile`(또는 `compose.yaml`)과 `실행방법.txt` 또는 `README.md`가 있습니다. 명령은 **해당 단계 폴더 안에서** 실행합니다.
@@ -84,6 +88,8 @@ dockerfile-step-by-step/
 | [09](./docs/steps.md#09-langchain-uv) | LangChain + FastAPI | **uv**, 비밀 값 분리 (`--env-file`) | 8001 |
 | [10](./docs/steps.md#10-langchain-rag-uv) | PDF RAG (Gradio) | 배포용 코드 수정, 환경 변수로 설정 분리, 하이브리드 검색 | 7860 |
 | [10-ec2](./docs/steps.md#10-ec2-deploy) | RAG 앱 (EC2) | **외부 API 키를 쓰는 앱의 배포**, 로그인, 사용 한도 | EC2 80 (또는 7860) |
+| [11](./docs/steps.md#11-k8s-memo-3tier) | 메모 앱 3티어 (Kubernetes) | **Pod, Deployment, Service, ConfigMap, Secret, PVC**, probe, minikube / GKE | minikube service (NodePort 30080) |
+| [12](./docs/steps.md#12-k8s-rag) | RAG 앱 (Kubernetes) | 상태가 Pod 안에 있는 앱, `sessionAffinity`, GCP Secret Manager 에서 키 가져오기 | minikube service (NodePort 30786) |
 
 배포 단계(07-2 → 08-3 → 08-4)는 이렇게 이어집니다.
 
@@ -106,6 +112,7 @@ dockerfile-step-by-step/
 08-2, 08-3, 08-4, 09, 10, 10-ec2단계는 `.env.example`을 `.env`로 복사해 비밀번호나 API 키를 넣어야 실행됩니다.
 07-2는 PC에 [Node.js](https://nodejs.org/) 22 이상, 09, 10단계는 [uv](https://docs.astral.sh/uv/)가 설치되어 있어야 합니다.
 08-4(EC2 배포)는 AWS 계정과 Docker Hub 계정이 필요합니다.
+11, 12단계는 [minikube](https://minikube.sigs.k8s.io/docs/start/)(docker 드라이버)와 `kubectl`, GKE 실습은 Google Cloud 프로젝트와 `gcloud` CLI가 필요합니다.
 
 ## 주의
 

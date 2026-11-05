@@ -1,0 +1,32 @@
+# ==========================================================
+# [GKE 전용] RAG 앱 Service 를 LoadBalancer 로 바꾸기
+#
+# 적용: kubectl apply -f 12-k8s-rag/ 다음에 kubectl apply -f 12-k8s-rag/gke/
+#   - 같은 이름(rag)의 Service 를 덮어씀
+#   - kubectl get svc rag -n rag 의 EXTERNAL-IP 로 접속 (1~2분, 그동안 <pending>)
+#
+# externalTrafficPolicy: Local  ← 이 앱에서 중요
+#   - 기본값(Cluster)이면 GKE 가 요청의 출발지 IP 를 "노드 IP" 로 바꿀 수 있음
+#     → 서로 다른 사용자가 같은 IP 로 보여 sessionAffinity: ClientIP 가 사용자별로 동작하지 않음
+#   - Local 이면 실제 사용자 IP 가 그대로 Pod 까지 전달됨 → 같은 사용자를 같은 Pod 로
+#   - 대신 Pod 가 있는 노드로만 요청이 감 (Pod 가 1~2개인 이 앱에서는 문제없음)
+#
+# minikube 에서는 적용하지 않음 (EXTERNAL-IP 가 계속 <pending>)
+# ==========================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: rag
+  namespace: rag
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  selector:
+    app: rag
+  ports:
+    - port: 80              # http://EXTERNAL-IP
+      targetPort: 7860      # Pod 안 Gradio
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800

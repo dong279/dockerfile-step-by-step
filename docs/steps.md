@@ -11,6 +11,7 @@
 | 백엔드 | [08-1](#08-1-springboot-maven) · [08-2](#08-2-springboot-mariadb) · [08-3](#08-3-springboot-flyway-dockercompose) |
 | 배포 | [08-4](#08-4-ec2-deploy) |
 | LLM | [09](#09-langchain-uv) · [10](#10-langchain-rag-uv) · [10-ec2](#10-ec2-deploy) |
+| Kubernetes | [11](#11-k8s-memo-3tier) · [12](#12-k8s-rag) |
 
 ---
 
@@ -232,6 +233,57 @@ scp -i ./keys/my-key.pem -r ./10-ec2-deploy ec2-user@<EC2 IP>:~/
 # EC2
 cd ~/10-ec2-deploy && cp .env.example .env && chmod 600 .env && nano .env
 docker compose pull && docker compose up -d
+```
+
+---
+
+### 11-k8s-memo-3tier
+
+[📁 폴더](../11-k8s-memo-3tier) · [📄 README](../11-k8s-memo-3tier/README.md)
+
+07-2(web), 08-3(app) 이미지와 MariaDB를 Kubernetes에 배포합니다. 폴더 하나에 개념 하나씩 더합니다. 로컬은 **minikube(docker 드라이버)**, 원격은 **GKE**에서 같은 YAML을 씁니다 (GKE는 `gke/`의 LoadBalancer Service 만 추가).
+
+| 폴더 | 새로 배우는 것 |
+|---|---|
+| `01-pod` | Pod |
+| `02-deployment` | Deployment (자동 복구) |
+| `03-service` | Service (고정 주소, NodePort 30080, minikube 는 `minikube service`로 접속) → 3티어 동작 |
+| `04-configmap` | ConfigMap (환경 변수, 초기화 SQL 파일) |
+| `05-secret` | Secret (비밀번호) |
+| `06-pvc` | PVC (DB 데이터 유지) |
+| `07-complete` | probe, resources, initContainer |
+
+```bash
+minikube start --driver=docker --memory=4096
+kubectl apply -f 03-service/                    # 각 폴더는 그 단계까지의 내용을 모두 포함
+minikube service frontend -n memo --url         # 출력된 주소로 접속 (터미널 열어 둔 채)
+kubectl delete namespace memo                   # 다음 단계로 넘어갈 때
+```
+
+### 12-k8s-rag
+
+[📁 폴더](../12-k8s-rag) · [📄 README](../12-k8s-rag/README.md)
+
+10단계 RAG 앱(`langchain-rag-app` 이미지)을 Kubernetes에 배포합니다. 로컬은 minikube, 원격은 GKE + **GCP Secret Manager**.
+
+- 파일: `00-namespace.yaml`, `01-rag-config.yaml`, `10-rag-deployment.yaml`, `11-rag-service.yaml`, `secret/rag-secrets.example.yaml`, `gke/11-rag-service-lb.yaml`, `gke/secret-sync/` (심화)
+- 핵심:
+  - OpenAI 키(`rag-openai`)와 로그인 계정(`rag-secret`)을 별도 Secret 으로 (Deployment 는 minikube, GKE 같은 파일)
+  - GKE: 키의 원본은 **Secret Manager** 에 두고, `gcloud secrets versions access`로 꺼내 `kubectl create secret`으로 만듦
+  - 심화: GKE **Secret Sync** + Workload Identity 로 자동 동기화 (`gke/secret-sync/`)
+  - PDF와 벡터 저장소가 **Pod 메모리**에 있는 stateful 앱 → Pod를 늘리면 Service의 `sessionAffinity: ClientIP`로 같은 사용자를 같은 Pod에 연결 (GKE LoadBalancer 는 `externalTrafficPolicy: Local`로 사용자 IP 유지)
+  - 메모 앱 backend(stateless)와 비교해 "언제 Pod를 그냥 늘려도 되는가"를 이해
+
+```bash
+# minikube
+kubectl apply -f 12-k8s-rag/00-namespace.yaml
+kubectl create secret generic rag-openai -n rag --from-literal=OPENAI_API_KEY='sk-...'
+kubectl create secret generic rag-secret -n rag --from-literal=APP_USERNAME='admin' --from-literal=APP_PASSWORD='...'
+kubectl apply -f 12-k8s-rag/
+minikube service rag -n rag --url
+# GKE: rag-openai 를 Secret Manager 의 키로 만들고, 마지막에 gke/ 추가 적용
+kubectl create secret generic rag-openai -n rag --from-literal=OPENAI_API_KEY="$(gcloud secrets versions access latest --secret=openai-api-key)"
+kubectl apply -f 12-k8s-rag/gke/
 ```
 
 ---

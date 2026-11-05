@@ -1,0 +1,78 @@
+# ==========================================================
+# RAG Gradio 앱 Deployment (Docker Hub: 아이디/langchain-rag-app)
+#
+# 메모 앱(11-k8s-memo-3tier)의 backend 와 가장 다른 점: "상태가 Pod 메모리에 있다"
+#   - 업로드한 PDF 파일   : Pod 안의 /tmp/gradio
+#   - FAISS 벡터 저장소   : Pod 의 파이썬 메모리 (gr.State, 접속자별)
+#   → Pod 가 다시 만들어지면 사라짐 (PDF 를 다시 올리면 됨)
+#   → Pod 가 여러 개면, 같은 사용자의 요청이 항상 같은 Pod 로 가야 함
+#      (11-rag-service.yaml 의 sessionAffinity: ClientIP)
+#
+# 그래서 replicas 는 1 로 시작 (늘리는 실습은 README 참고)
+# ==========================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rag
+  namespace: rag
+  labels:
+    app: rag
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rag
+  template:
+    metadata:
+      labels:
+        app: rag
+    spec:
+      containers:
+        - name: rag
+          # ⚠ hubusername 을 내 Docker Hub 아이디로 바꾸기 (10-ec2-deploy 에서 올린 이미지)
+          #image: hubusername/langchain-rag-app:latest
+          image: vega2krookies6/langchain-rag-app:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 7860
+          env:
+            # Secret rag-openai: OpenAI 키 (없으면 앱이 시작하자마자 종료 → CrashLoopBackOff)
+            # - minikube: kubectl create secret 으로 직접 만듦
+            # - GKE     : Secret Manager 에 저장한 키를 gcloud 로 꺼내 kubectl create secret 으로 만듦
+            #             (심화: Secret Sync 로 자동 생성, gke/secret-sync/)
+            #   → 어떻게 만들든 이름(rag-openai)과 키(OPENAI_API_KEY)가 같으므로 이 파일은 그대로
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef: { name: rag-openai, key: OPENAI_API_KEY }
+            # Secret rag-secret: 로그인 계정 (클러스터 밖에 공개되므로 필수, minikube/GKE 모두 직접 만듦)
+            - name: APP_USERNAME
+              valueFrom:
+                secretKeyRef: { name: rag-secret, key: APP_USERNAME }
+            - name: APP_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: rag-secret, key: APP_PASSWORD }
+            # ConfigMap: 업로드 크기 제한
+            - name: APP_MAX_FILE_SIZE
+              valueFrom:
+                configMapKeyRef: { name: rag-config, key: APP_MAX_FILE_SIZE }
+
+          # 자원: Gradio + LangChain 을 불러오는 데 수백 MB, PDF 임베딩/FAISS 생성 중에 더 늘어남
+          resources:
+            requests: { cpu: 100m, memory: 384Mi }
+            limits:   { memory: 1Gi }
+
+          # 상태 확인: Gradio 에는 /health 가 없으므로 첫 화면(/) 사용 (Dockerfile HEALTHCHECK 와 같음)
+          # - 로그인을 켜도 / 는 로그인 화면을 200 으로 돌려주므로 그대로 동작
+          # - 화면만 불러오므로 OpenAI 사용량은 발생하지 않음
+          startupProbe:
+            httpGet: { path: /, port: 7860 }
+            periodSeconds: 5
+            failureThreshold: 24      # 5초 × 24번 = 최대 2분 (패키지 불러오는 시간)
+          readinessProbe:
+            httpGet: { path: /, port: 7860 }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /, port: 7860 }
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3

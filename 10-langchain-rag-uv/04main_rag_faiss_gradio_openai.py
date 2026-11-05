@@ -155,7 +155,11 @@ def require_api_key() -> str:
         raise ValueError(f"{API_KEY_ENV}가 설정되지 않았습니다. .env 파일을 확인해주세요.")
     return api_key
 
-
+"""
+@dataclass: Python 3.7 이상에서 제공하는 편리한 클래스 데코레이터
+클래스 안에 이름: 타입 형태로 필드만 적으면, @dataclass가 생성자(__init__), 출력 형식(__repr__), 비교(__eq__)를 대신 만들어 줍니다.
+@lru_cache도 같은 종류의 표준 라이브러리 데코레이터입니다(functools). 함수의 결과를 기억해 두었다가 같은 인자로 다시 부르면 저장된 결과를 돌려줍니다.
+"""
 @dataclass
 class RagSession:
     """사용자 세션별 RAG 상태. 같은 (PDF, 분할 설정)이면 벡터 저장소를 재사용한다."""

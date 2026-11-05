@@ -1,0 +1,2 @@
+# 실제 OpenAI 키, 비밀번호가 들어간 Secret 파일은 올리지 않음 (예시 파일만 올림)
+secret/rag-secrets.yaml
