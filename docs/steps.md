@@ -10,7 +10,7 @@
 | 프론트엔드 | [07-1](#07-1-react-vite) · [07-2](#07-2-react-memo-flyway) |
 | 백엔드 | [08-1](#08-1-springboot-maven) · [08-2](#08-2-springboot-mariadb) · [08-3](#08-3-springboot-flyway-dockercompose) |
 | 배포 | [08-4](#08-4-ec2-deploy) |
-| LLM | [09](#09-langchain-uv) · [10](#10-langchain-rag-uv) |
+| LLM | [09](#09-langchain-uv) · [10](#10-langchain-rag-uv) · [10-ec2](#10-ec2-deploy) |
 
 ---
 
@@ -212,6 +212,27 @@ PDF를 업로드하면 문서 내용을 근거로 답변하는 RAG Gradio 앱입
   - 모델 교체: Upstage Solar → OpenAI (`langchain-openai`, `OPENAI_API_KEY`), GPT-6 추론 모델은 `reasoning_effort="none"`일 때만 `temperature` 사용 가능
   - 하이브리드 검색: 벡터(FAISS) + 키워드(BM25, 한국어 두 글자 단위)를 합쳐 법령처럼 용어가 중요한 문서에서도 정답 청크를 찾음
   - 버전 호환 문제: Gradio 6.9 미만 (gradio-pdf 호환), Python 3.12 기준
+  - 로그인: `APP_USERNAME`, `APP_PASSWORD`가 있으면 Gradio 로그인 화면 사용 (외부 공개 시 필수)
+
+### 10-ec2-deploy
+
+[📁 폴더](../10-ec2-deploy) · [📄 README](../10-ec2-deploy/README.md)
+
+10단계 RAG 앱을 AWS EC2에 배포합니다. 08-4(메모 앱)와 같은 방식이지만 **외부 유료 API 키를 쓰는 앱**이라는 점이 다릅니다.
+
+- 파일: `compose.yaml`, `.env.example`, `setup-ec2.sh`
+- 핵심:
+  - 이미지(`langchain-rag-app`)는 GitHub Actions 또는 `docker buildx --platform linux/amd64 --push`로 Docker Hub에 올림
+  - OpenAI 키는 이미지에 넣지 않고 EC2의 `.env`(권한 600)로만 전달
+  - 인터넷에 공개되므로 **로그인 필수**, OpenAI 플랫폼에서 **월 사용 한도** 설정
+  - 이 앱만 올리면 `HOST_PORT=80`, 메모 앱과 같은 EC2면 `HOST_PORT=7860` + 보안 그룹 7860
+
+```bash
+scp -i ./keys/my-key.pem -r ./10-ec2-deploy ec2-user@<EC2 IP>:~/
+# EC2
+cd ~/10-ec2-deploy && cp .env.example .env && chmod 600 .env && nano .env
+docker compose pull && docker compose up -d
+```
 
 ---
 

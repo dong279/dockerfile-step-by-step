@@ -1,0 +1,38 @@
+# ==========================================================
+# EC2 배포용 Docker Compose: PDF 질의응답(RAG) Gradio 앱
+# - ec2-deploy(메모 앱)와 같은 방식: 소스로 빌드하지 않고 Docker Hub 이미지를 받아서 실행
+# - 실행: docker compose pull && docker compose up -d
+#
+#   인터넷 ──HOST_PORT(기본 80)──▶ rag (Gradio :7860) ──▶ OpenAI API
+#
+# - DB 가 없고 컨테이너 1개: PDF 의 벡터(FAISS)는 메모리에만 저장 (재시작하면 사라짐, PDF 다시 업로드)
+# ==========================================================
+
+name: langchain-rag
+
+services:
+  rag:
+    # GitHub Actions(또는 직접 push)로 올린 이미지
+    image: ${DOCKERHUB_USERNAME}/langchain-rag-app:${APP_TAG:-latest}
+
+    # 앱에 필요한 값만 전달 (.env 의 값이 ${...} 자리에 치환됨)
+    # - DOCKERHUB_USERNAME, HOST_PORT 같은 배포용 값은 컨테이너에 넣지 않음
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      # 로그인 계정 (둘 다 있어야 로그인 화면이 켜짐, 인터넷에 공개하므로 반드시 설정)
+      APP_USERNAME: ${APP_USERNAME}
+      APP_PASSWORD: ${APP_PASSWORD}
+      # PDF 업로드 최대 크기
+      APP_MAX_FILE_SIZE: ${APP_MAX_FILE_SIZE:-20mb}
+
+    # 내 PC 브라우저 → EC2 의 HOST_PORT → 컨테이너의 Gradio 7860
+    # - 이 앱만 올리는 EC2 라면 80 (http://EC2 IP)
+    # - 메모 앱과 같은 EC2 라면 80 은 web 이 쓰므로 7860 등 다른 포트 (보안 그룹에도 추가)
+    ports:
+      - "${HOST_PORT:-80}:7860"
+
+    # 메모리 한도 (PDF 임베딩, FAISS 생성 시 메모리 사용이 늘어남)
+    mem_limit: 768m
+
+    # 헬스체크는 이미지(Dockerfile)의 HEALTHCHECK 사용: 30초마다 http://localhost:7860/ 확인
+    restart: unless-stopped
